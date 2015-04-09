@@ -1,7 +1,18 @@
-KERNELRELEASE	?= `uname -r`
-KERNEL_DIR	?= /lib/modules/$(KERNELRELEASE)/build
+ifndef PLATFORM
+    $(error You must first source the environment)
+endif
+
+# If KERENELRELEASE is defined, we have been invoked from the
+# kernel build system and can use its language
+ifneq ($(KERNELRELEASE),)
+	obj-m += v4l2loopback.o
+	
+# Otherwise we were called directly from the commandline
+# invoke the kernel build system
+else
+KERNEL_DIR	?= $(LINUX_PATH)
 PWD		:= $(shell pwd)
-obj-m		:= v4l2loopback.o
+CFLAGS += -I$(PWD)
 
 PREFIX ?= /usr/local
 BINDIR  = $(PREFIX)/bin
@@ -36,11 +47,12 @@ MODULE_OPTIONS = devices=2
 # makefiles. therefore v4l2loopback.ko is a phony target actually
 .PHONY: v4l2loopback.ko
 
+default: v4l2loopback.ko
 all: v4l2loopback.ko
 v4l2loopback: v4l2loopback.ko
 v4l2loopback.ko:
 	@echo "Building v4l2-loopback driver..."
-	$(MAKE) -C $(KERNEL_DIR) M=$(PWD) modules
+	$(MAKE) -C $(KERNEL_DIR) M=$(PWD) V=1 modules
 
 install-all: install install-utils install-man
 install:
@@ -58,7 +70,7 @@ install-man: man/v4l2loopback-ctl.1
 clean:
 	rm -f *~
 	rm -f Module.symvers Module.markers modules.order
-	$(MAKE) -C $(KERNEL_DIR) M=$(PWD) clean
+	$(MAKE) -C $(KERNEL_DIR) M=$(PWD) V=1 clean
 
 distclean: clean
 	rm -f man/v4l2loopback-ctl.1
@@ -71,3 +83,4 @@ modprobe: v4l2loopback.ko
 
 man/v4l2loopback-ctl.1: utils/v4l2loopback-ctl
 	help2man -N --name "control v4l2 loopback devices" $^ > $@
+endif
